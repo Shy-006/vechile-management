@@ -16,7 +16,11 @@ const UserSchema = new mongoose.Schema({
   role: { 
     type: String, 
     enum: ['USER', 'ADMIN'], 
-    default: 'USER' }
+    default: 'USER' },
+  isTemporaryPassword: {
+    type: Boolean,
+    default: false
+  }
 }, { timestamps: true });
 
 export const User = mongoose.model('User', UserSchema);
