@@ -10,14 +10,14 @@ export const addVehicle = async (req, res) => {
     }
 
     let targetUserId = req.user.id;
+    let ownerCreated = false;
+    let temporaryPassword = null;
 
-    
     if (req.user.role === 'ADMIN' && ownerEmail) {
       const cleanEmail = ownerEmail.trim().toLowerCase();
       let owner = await User.findOne({ email: cleanEmail });
       
       if (!owner) {
-        
         const emailPrefix = cleanEmail.split('@')[0];
         const formattedName = emailPrefix.charAt(0).toUpperCase() + emailPrefix.slice(1);
         const defaultPasswordHash = await bcrypt.hash('welcome123', 10);
@@ -26,15 +26,17 @@ export const addVehicle = async (req, res) => {
           name: formattedName,
           email: cleanEmail,
           password: defaultPasswordHash,
-          role: 'USER'
+          role: 'USER',
+          isTemporaryPassword: true
         });
         await owner.save();
+        ownerCreated = true;
+        temporaryPassword = 'welcome123';
       }
       
       targetUserId = owner._id;
     }
 
-    
     const existingVehicle = await Vehicle.findOne({ vehicleNumber: vehicleNumber.toUpperCase().trim() });
     if (existingVehicle) {
       return res.status(400).json({ error: `Vehicle number ${vehicleNumber} is already registered.` });
@@ -48,6 +50,16 @@ export const addVehicle = async (req, res) => {
     });
 
     await vehicle.save();
+
+    if (ownerCreated) {
+      return res.status(201).json({
+        vehicle,
+        ownerCreated: true,
+        temporaryPassword,
+        message: 'Vehicle registered and a new user account was created with a temporary password.'
+      });
+    }
+
     res.status(201).json(vehicle);
   } catch (error) {
     res.status(500).json({ error: error.message });

@@ -41,7 +41,8 @@ export const register = async (req, res) => {
         id: newUser._id,
         name: newUser.name,
         email: newUser.email,
-        role: newUser.role
+        role: newUser.role,
+        isTemporaryPassword: false
       }
     });
   } catch (error) {
@@ -68,9 +69,12 @@ export const requestPasswordReset = async (req, res) => {
 
 export const resetPassword = async (req, res) => {
   try {
-    const { email, newPassword } = req.body;
-    if (!email || !newPassword) {
-      return res.status(400).json({ error: 'Email and new password are required.' });
+    const { email, newPassword, confirmPassword } = req.body;
+    if (!email || !newPassword || !confirmPassword) {
+      return res.status(400).json({ error: 'Email, new password, and confirm password are required.' });
+    }
+    if (newPassword !== confirmPassword) {
+      return res.status(400).json({ error: 'New password and confirm password do not match.' });
     }
     const user = await User.findOne({ email: email.trim().toLowerCase() });
     if (!user) {
@@ -78,8 +82,36 @@ export const resetPassword = async (req, res) => {
     }
     const hashed = await bcrypt.hash(newPassword, 10);
     user.password = hashed;
+    user.isTemporaryPassword = false;
     await user.save();
     return res.status(200).json({ message: 'Password has been reset successfully.' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+export const changePassword = async (req, res) => {
+  try {
+    const { currentPassword, newPassword, confirmPassword } = req.body;
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      return res.status(400).json({ error: 'Current password, new password, and confirm password are required.' });
+    }
+    if (newPassword !== confirmPassword) {
+      return res.status(400).json({ error: 'New password and confirm password do not match.' });
+    }
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found.' });
+    }
+    const isMatch = await bcrypt.compare(currentPassword, user.password);
+    if (!isMatch) {
+      return res.status(400).json({ error: 'Incorrect current password.' });
+    }
+    const hashed = await bcrypt.hash(newPassword, 10);
+    user.password = hashed;
+    user.isTemporaryPassword = false;
+    await user.save();
+    return res.status(200).json({ message: 'Password updated successfully.' });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -115,7 +147,8 @@ export const login = async (req, res) => {
         id: user._id,
         name: user.name,
         email: user.email,
-        role: user.role
+        role: user.role,
+        isTemporaryPassword: user.isTemporaryPassword || false
       }
     });
   } catch (error) {
