@@ -3,6 +3,30 @@ import bcrypt from 'bcryptjs';
 import { User } from '../model/User.js';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'supersecretcarshopkey123';
+const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'supersecretrefreshkey123';
+
+export const generateTokens = (user, res) => {
+  const payload = { id: user._id, email: user.email, role: user.role, name: user.name };
+  const accessToken = jwt.sign(payload, JWT_SECRET, { expiresIn: '15m' });
+  const refreshToken = jwt.sign(payload, JWT_REFRESH_SECRET, { expiresIn: '7d' });
+
+  // Set HTTP-only cookies
+  res.cookie('accessToken', accessToken, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    maxAge: 15 * 60 * 1000 // 15 mins
+  });
+
+  res.cookie('refreshToken', refreshToken, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+  });
+
+  return { accessToken, refreshToken };
+};
 
 export const register = async (req, res) => {
   try {
@@ -28,15 +52,10 @@ export const register = async (req, res) => {
 
     await newUser.save();
 
-    const token = jwt.sign(
-      { id: newUser._id, email: newUser.email, role: newUser.role, name: newUser.name },
-      JWT_SECRET,
-      { expiresIn: '7d' }
-    );
+    generateTokens(newUser, res);
 
     res.status(201).json({
       message: 'Registration successful!',
-      token,
       user: {
         id: newUser._id,
         name: newUser.name,
@@ -50,45 +69,6 @@ export const register = async (req, res) => {
   }
 };
 
-export const requestPasswordReset = async (req, res) => {
-  try {
-    const { email } = req.body;
-    if (!email) {
-      return res.status(400).json({ error: 'Email is required.' });
-    }
-    const user = await User.findOne({ email: email.trim().toLowerCase() });
-    if (!user) {
-      return res.status(200).json({ message: 'If that email exists, a reset link has been sent.' });
-    }
-    const resetToken = jwt.sign({ id: user._id, email: user.email, purpose: 'reset' }, JWT_SECRET, { expiresIn: '1h' });
-    return res.status(200).json({ message: 'Password reset token generated.', resetToken });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
-
-export const resetPassword = async (req, res) => {
-  try {
-    const { email, newPassword, confirmPassword } = req.body;
-    if (!email || !newPassword || !confirmPassword) {
-      return res.status(400).json({ error: 'Email, new password, and confirm password are required.' });
-    }
-    if (newPassword !== confirmPassword) {
-      return res.status(400).json({ error: 'New password and confirm password do not match.' });
-    }
-    const user = await User.findOne({ email: email.trim().toLowerCase() });
-    if (!user) {
-      return res.status(404).json({ error: 'User not found.' });
-    }
-    const hashed = await bcrypt.hash(newPassword, 10);
-    user.password = hashed;
-    user.isTemporaryPassword = false;
-    await user.save();
-    return res.status(200).json({ message: 'Password has been reset successfully.' });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
 
 export const changePassword = async (req, res) => {
   try {
@@ -134,15 +114,10 @@ export const login = async (req, res) => {
       return res.status(401).json({ error: 'Invalid email or password.' });
     }
 
-    const token = jwt.sign(
-      { id: user._id, email: user.email, role: user.role, name: user.name },
-      JWT_SECRET,
-      { expiresIn: '7d' }
-    );
+    generateTokens(user, res);
 
     res.json({
       message: 'Login successful!',
-      token,
       user: {
         id: user._id,
         name: user.name,
@@ -154,4 +129,10 @@ export const login = async (req, res) => {
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
+};
+
+export const logout = async (req, res) => {
+  res.clearCookie('accessToken');
+  res.clearCookie('refreshToken');
+  res.json({ message: 'Logged out successfully.' });
 };
