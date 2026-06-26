@@ -10,6 +10,7 @@ import vehicleRoutes from './routes/vehicleRoutes.js';
 import serviceRoutes from './routes/serviceRoutes.js';
 import serviceRecordRoutes from './routes/serviceRecordRoutes.js';
 import reportRoutes from './routes/reportRoutes.js';
+import serviceReminderRoutes from './routes/serviceReminderRoutes.js';
 
 dotenv.config();
 
@@ -28,6 +29,7 @@ app.use('/api/vehicles', vehicleRoutes);
 app.use('/api/services', serviceRoutes);
 app.use('/api/service-records', serviceRecordRoutes);
 app.use('/api/reports', reportRoutes);
+app.use('/api/service-reminders', serviceReminderRoutes);
 
 app.get('/', (req, res) => {
   res.send('hi');
