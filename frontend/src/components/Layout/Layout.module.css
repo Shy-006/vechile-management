@@ -1,0 +1,32 @@
+.layoutContainer {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background-color: var(--bg-primary);
+}
+
+.mainBody {
+  display: flex;
+  flex: 1;
+}
+
+.pageContent {
+  flex: 1;
+  padding: 30px;
+  overflow-y: auto;
+  max-width: 100%;
+}
+
+.authContainer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 20px;
+}
+
+@media (max-width: 768px) {
+  .pageContent {
+    padding: 15px;
+  }
+}
