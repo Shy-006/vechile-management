@@ -118,3 +118,17 @@ export const getVehicleHistory = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+
+export const getAllServiceRecords = async (req, res) => {
+  try {
+    const records = await ServiceRecord.find({})
+      .populate('vehicleId')
+      .populate('services.serviceId')
+      .populate('performedBy', 'name')
+      .sort({ serviceDate: -1 })
+      .limit(10);
+    res.json(records);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
