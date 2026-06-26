@@ -136,3 +136,23 @@ export const logout = async (req, res) => {
   res.clearCookie('refreshToken');
   res.json({ message: 'Logged out successfully.' });
 };
+
+export const checkSession = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id).select('-password');
+    if (!user) {
+      return res.status(404).json({ error: 'User not found.' });
+    }
+    res.json({
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        isTemporaryPassword: user.isTemporaryPassword || false
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
